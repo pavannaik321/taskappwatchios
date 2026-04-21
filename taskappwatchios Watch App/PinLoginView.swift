@@ -37,18 +37,16 @@ struct PinLoginView: View {
         VStack(spacing: 0) {
             ZStack {
                 Circle()
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
+                    .frame(width: 62, height: 62)
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
                     .frame(width: 52, height: 52)
-                ZStack {
-                    Circle()
-                        .fill(AppColors.surface)
-                        .overlay(Circle().strokeBorder(AppColors.surface2, lineWidth: 1.5))
-                    Image(systemName: "clock.fill")
-                        .resizable().scaledToFit()
-                        .frame(width: 22, height: 22)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-                .frame(width: 44, height: 44)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
+                    .clipShape(Circle())
             }
 
             Spacer().frame(height: 16)
@@ -78,16 +76,11 @@ struct PinLoginView: View {
                 Spacer().frame(height: 12)
 
                 // App icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(AppColors.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(AppColors.surface2, lineWidth: 1))
-                    Image(systemName: "clock.fill")
-                        .resizable().scaledToFit()
-                        .frame(width: 20, height: 20)
-                        .foregroundColor(AppColors.textSecondary)
-                }
-                .frame(width: 40, height: 40)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 Spacer().frame(height: 6)
 

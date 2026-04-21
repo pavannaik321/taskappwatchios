@@ -79,21 +79,15 @@ struct SplashView: View {
         ZStack {
             Circle()
                 .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-                .frame(width: 62, height: 62)
+                .frame(width: 72, height: 72)
             Circle()
                 .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-                .frame(width: 52, height: 52)
-            ZStack {
-                Circle()
-                    .fill(AppColors.surface)
-                    .overlay(Circle().strokeBorder(AppColors.surface2, lineWidth: 1.5))
-                    .shadow(color: Color.white.opacity(0.05), radius: 8)
-                Image(systemName: "clock.fill")
-                    .resizable().scaledToFit()
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(AppColors.textSecondary)
-            }
-            .frame(width: 44, height: 44)
+                .frame(width: 60, height: 60)
+            Image("AppLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 48, height: 48)
+                .clipShape(Circle())
         }
     }
 
