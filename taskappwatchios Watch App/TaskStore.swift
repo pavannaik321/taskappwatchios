@@ -10,7 +10,42 @@ class TaskStore: ObservableObject {
 
     private let key = "local_tasks_v1"
 
-    init() { load() }
+    init() {
+        load()
+        deduplicateLocalStore()
+    }
+
+    // MARK: - Startup dedup
+    // Cleans up duplicate tasks that may exist in UserDefaults from before
+    // the clientTaskId de-dup fix. Groups by startTime+date, keeps one per slot.
+    private func deduplicateLocalStore() {
+        // Group tasks by date + rounded startTime (same minute = same slot)
+        var seen: [String: Int] = [:]   // key → index of task to keep
+        var indicesToRemove: [Int] = []
+
+        for (i, task) in tasks.enumerated() {
+            let key = "\(task.date)|\(Int(task.startTime.timeIntervalSince1970 / 60))"
+            if let existing = seen[key] {
+                // Prefer synced tasks; among equals prefer MongoDB-style id (24 hex chars)
+                let currentIsMongoId = tasks[existing].id.count == 24
+                let newIsMongoId     = task.id.count == 24
+                if (!currentIsMongoId && newIsMongoId) || (!tasks[existing].isSynced && task.isSynced) {
+                    indicesToRemove.append(existing)
+                    seen[key] = i
+                } else {
+                    indicesToRemove.append(i)
+                }
+            } else {
+                seen[key] = i
+            }
+        }
+
+        guard !indicesToRemove.isEmpty else { return }
+        for idx in indicesToRemove.sorted(by: >) {
+            tasks.remove(at: idx)
+        }
+        persist()
+    }
 
     // MARK: - CRUD
 
@@ -26,7 +61,7 @@ class TaskStore: ObservableObject {
     // MARK: - Queries
 
     func getByDate(_ date: String) -> [LocalTask] {
-        tasks.filter { $0.date == date }.sorted { $0.startTime < $1.startTime }
+        tasks.filter { $0.date == date }.sorted { $0.startTime > $1.startTime }
     }
 
     /// Returns slot start times for today that have no matching logged task.
@@ -89,10 +124,27 @@ class TaskStore: ObservableObject {
             }
             let existingIdx  = byId ?? byClientId
 
-            if let idx = existingIdx {
-                // Promote local UUID to backend _id so future fetches match by _id
+            if let idIdx = byId, let clientIdx = byClientId, idIdx != clientIdx {
+                // Both the mongo-id version AND the old UUID-id version exist in local store
+                // (stale duplicate from before clientTaskId fix) — remove both, keep one clean copy
+                let higher = max(idIdx, clientIdx)
+                let lower  = min(idIdx, clientIdx)
+                tasks.remove(at: higher)
+                tasks.remove(at: lower)
+                tasks.append(LocalTask(
+                    id:           item.id,
+                    title:        item.title,
+                    category:     item.category ?? "General",
+                    startTime:    start,
+                    endTime:      end,
+                    date:         item.date,
+                    isQuickEntry: tasks[safe: lower]?.isQuickEntry ?? false,
+                    isSynced:     true,
+                    userId:       userId
+                ))
+            } else if let idx = existingIdx {
+                // Single match — promote local UUID to backend _id, mark synced
                 tasks[idx].id = item.id
-                // Only update content if already synced (don't clobber pending local edits)
                 if tasks[idx].isSynced {
                     tasks[idx].title     = item.title
                     tasks[idx].category  = item.category ?? "General"
@@ -101,6 +153,7 @@ class TaskStore: ObservableObject {
                 }
                 tasks[idx].isSynced = true
             } else {
+                // New task from backend not yet in local store
                 tasks.append(LocalTask(
                     id:           item.id,
                     title:        item.title,
@@ -166,4 +219,10 @@ class TaskStore: ObservableObject {
 
 private extension Int {
     func nonZeroOr(_ fallback: Int) -> Int { self == 0 ? fallback : self }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
 }
