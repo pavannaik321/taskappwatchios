@@ -192,10 +192,18 @@ struct SettingsView: View {
     private func fireTest() {
         testFired = true; testErr = nil
 
+        let intervalMinutes = UserDefaults.standard.integer(forKey: "watch_interval").nonZeroOrDefault(60)
+        let startTime = Date().addingTimeInterval(Double(-intervalMinutes) * 60)
+        let isoFmt = ISO8601DateFormatter()
+
         let content = UNMutableNotificationContent()
         content.title = "Time to log!"
         content.body = "What have you been working on? Tap to record."
         content.sound = .default
+        content.userInfo = [
+            NotificationManager.kPendingStartTime:       isoFmt.string(from: startTime),
+            NotificationManager.kPendingIntervalMinutes: intervalMinutes,
+        ]
 
         // Fires 3 seconds after tapping the button so user can see it arrive
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)

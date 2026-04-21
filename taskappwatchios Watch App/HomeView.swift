@@ -70,6 +70,16 @@ struct HomeView: View {
                     .allowsHitTesting(false)
                 }
             }
+            // ── Deep-link from notification tap ────────────────────
+            .onAppear {
+                if let pending = NotificationManager.consumePendingNav() {
+                    navPath.append(NavDest.speechRecord(
+                        startISO:        pending.startISO,
+                        intervalMinutes: pending.intervalMinutes
+                    ))
+                }
+            }
+
             // ── Navigation destinations (mirrors Go Router routes) ──
             .navigationDestination(for: NavDest.self) { dest in
                 switch dest {

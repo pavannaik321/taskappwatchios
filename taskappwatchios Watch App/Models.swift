@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Remote TaskItem (from API — uses TaskItem to avoid Swift Task conflict)
 struct TaskItem: Identifiable, Codable, Sendable {
     let id: String
+    let clientTaskId: String?   // the UUID we sent when creating — used to de-dup against local store
     let title: String
     let description: String?
     let category: String?
@@ -12,7 +13,7 @@ struct TaskItem: Identifiable, Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
-        case title, description, category, startTime, endTime, date
+        case clientTaskId, title, description, category, startTime, endTime, date
     }
 
     var startDate: Date? { Self.parseISO(startTime) }
@@ -76,6 +77,7 @@ struct RemoteUser: Codable, Sendable {
 }
 
 struct CreateTaskBody: Codable, Sendable {
+    let clientTaskId: String    // local UUID — backend stores this so we can de-dup on fetch
     let title: String
     let category: String
     let startTime: String

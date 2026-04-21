@@ -67,13 +67,12 @@ class TaskStore: ObservableObject {
     // MARK: - Sync
 
     /// Merges tasks fetched from backend into local store.
-    /// Remote tasks are marked isSynced=true. Locally-created unsynced tasks are never overwritten.
+    /// Matches by backend _id first, then by clientTaskId (the UUID we sent on create).
+    /// This prevents duplicates when a locally-created task is fetched back with a new MongoDB _id.
     func mergeRemote(_ items: [TaskItem], userId: String) {
-        // Backend returns fractional-second ISO8601 (e.g. "2026-04-21T10:30:00.000+00:00").
-        // The default ISO8601DateFormatter doesn't handle .000 — must enable fractional seconds.
         let isoFmt = ISO8601DateFormatter()
         isoFmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let isoFmtBasic = ISO8601DateFormatter() // fallback for dates without ms
+        let isoFmtBasic = ISO8601DateFormatter()
 
         func parseDate(_ str: String) -> Date? {
             isoFmt.date(from: str) ?? isoFmtBasic.date(from: str)
@@ -82,27 +81,37 @@ class TaskStore: ObservableObject {
         for item in items {
             guard let start = parseDate(item.startTime),
                   let end   = parseDate(item.endTime) else { continue }
-            if let idx = tasks.firstIndex(where: { $0.id == item.id }) {
-                // Update only if already synced (don't clobber pending local edits)
+
+            // Try to find existing local task: first by backend _id, then by clientTaskId
+            let byId         = tasks.firstIndex(where: { $0.id == item.id })
+            let byClientId   = item.clientTaskId.flatMap { cid in
+                tasks.firstIndex(where: { $0.id == cid })
+            }
+            let existingIdx  = byId ?? byClientId
+
+            if let idx = existingIdx {
+                // Promote local UUID to backend _id so future fetches match by _id
+                tasks[idx].id = item.id
+                // Only update content if already synced (don't clobber pending local edits)
                 if tasks[idx].isSynced {
-                    tasks[idx].title    = item.title
-                    tasks[idx].category = item.category ?? "General"
+                    tasks[idx].title     = item.title
+                    tasks[idx].category  = item.category ?? "General"
                     tasks[idx].startTime = start
                     tasks[idx].endTime   = end
                 }
+                tasks[idx].isSynced = true
             } else {
-                let local = LocalTask(
-                    id:             item.id,
-                    title:          item.title,
-                    category:       item.category ?? "General",
-                    startTime:      start,
-                    endTime:        end,
-                    date:           item.date,
-                    isQuickEntry:   false,
-                    isSynced:       true,
-                    userId:         userId
-                )
-                tasks.append(local)
+                tasks.append(LocalTask(
+                    id:           item.id,
+                    title:        item.title,
+                    category:     item.category ?? "General",
+                    startTime:    start,
+                    endTime:      end,
+                    date:         item.date,
+                    isQuickEntry: false,
+                    isSynced:     true,
+                    userId:       userId
+                ))
             }
         }
         persist()
@@ -118,6 +127,7 @@ class TaskStore: ObservableObject {
 
             for task in unsynced {
                 let body = CreateTaskBody(
+                    clientTaskId:    task.id,   // send local UUID so backend stores it for de-dup
                     title:           task.title,
                     category:        task.category,
                     startTime:       isoFmt.string(from: task.startTime),
