@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 // Mirrors Wear OS SettingsScreen: schedule (read-only) → notifications → account → re-pair → sign out
 struct SettingsView: View {
@@ -190,10 +191,32 @@ struct SettingsView: View {
 
     private func fireTest() {
         testFired = true; testErr = nil
-        // Basic local notification test
-        Swift.Task {
-            try? await Swift.Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run { testFired = false }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Time to log!"
+        content.body = "What have you been working on? Tap to record."
+        content.sound = .default
+
+        // Fires 3 seconds after tapping the button so user can see it arrive
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "test-checkin-\(Int(Date().timeIntervalSince1970))",
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            DispatchQueue.main.async {
+                if let error {
+                    testErr = error.localizedDescription
+                    testFired = false
+                }
+                // Reset "Sent!" badge after 4s
+                Swift.Task {
+                    try? await Swift.Task.sleep(nanoseconds: 4_000_000_000)
+                    await MainActor.run { testFired = false }
+                }
+            }
         }
     }
 

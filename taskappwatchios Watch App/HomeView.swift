@@ -7,6 +7,7 @@ enum NavDest: Hashable {
     case taskList
     case addTask(startISO: String)
     case quickTask(startISO: String, intervalMinutes: Int)
+    case speechRecord(startISO: String, intervalMinutes: Int)
     case taskSaved(title: String, startISO: String, endISO: String)
     case missedText(startISO: String, intervalMinutes: Int)
 }
@@ -90,6 +91,10 @@ struct HomeView: View {
                 case .taskSaved(let title, let s, let e):
                     TaskSavedView(title: title, startISO: s, endISO: e, onDone: {
                         navPath = NavigationPath()
+                    })
+                case .speechRecord(let startISO, let interval):
+                    SpeechRecordView(startISO: startISO, intervalMinutes: interval, store: store, onSaved: { title, s, e in
+                        navPath.append(NavDest.taskSaved(title: title, startISO: s, endISO: e))
                     })
                 case .missedText(let startISO, let interval):
                     MissedTextView(startISO: startISO, intervalMinutes: interval, store: store, onSaved: {
@@ -254,7 +259,7 @@ struct MissedPage: View {
                             slot: slot,
                             intervalMinutes: interval,
                             onRecord: { startISO in
-                                navPath.append(NavDest.quickTask(startISO: startISO, intervalMinutes: interval))
+                                navPath.append(NavDest.speechRecord(startISO: startISO, intervalMinutes: interval))
                             },
                             onText: { startISO in
                                 navPath.append(NavDest.missedText(startISO: startISO, intervalMinutes: interval))
