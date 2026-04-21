@@ -180,7 +180,7 @@ class TaskStore: ObservableObject {
 
             for task in unsynced {
                 let body = CreateTaskBody(
-                    clientTaskId:    task.id,   // send local UUID so backend stores it for de-dup
+                    id:              task.id,   // backend reads as clientTaskId for de-dup
                     title:           task.title,
                     category:        task.category,
                     startTime:       isoFmt.string(from: task.startTime),

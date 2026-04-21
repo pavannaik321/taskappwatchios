@@ -77,7 +77,7 @@ struct RemoteUser: Codable, Sendable {
 }
 
 struct CreateTaskBody: Codable, Sendable {
-    let clientTaskId: String    // local UUID — backend stores this so we can de-dup on fetch
+    let id: String              // backend reads this field as clientTaskId for de-dup
     let title: String
     let category: String
     let startTime: String
