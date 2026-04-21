@@ -133,6 +133,8 @@ struct SplashView: View {
             await sleep(ms: 500)
         }
 
+        // Flush any notification deep-link stored while app was dead
+        NotificationManager.flushPendingNavIfNeeded()
         onComplete(loggedIn)
     }
 

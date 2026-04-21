@@ -18,8 +18,8 @@ struct HomeView: View {
     let onLogout: () -> Void
 
     @StateObject private var store = TaskStore.shared
-    @State private var page      = 0
-    @State private var navPath   = NavigationPath()
+    @State private var page    = 0
+    @State private var navPath = NavigationPath()
 
     private let labels = ["TODAY", "MISSED", "PROFILE"]
     private let today  = DataClient.todayString()
@@ -70,12 +70,13 @@ struct HomeView: View {
                     .allowsHitTesting(false)
                 }
             }
-            // ── Deep-link from notification tap ────────────────────
+            // ── Register deep-link callback (works when app is live or cold-start) ──
             .onAppear {
-                if let pending = NotificationManager.consumePendingNav() {
+                NavigationState.shared.openRecord = { startISO, interval in
+                    navPath = NavigationPath()
                     navPath.append(NavDest.speechRecord(
-                        startISO:        pending.startISO,
-                        intervalMinutes: pending.intervalMinutes
+                        startISO:        startISO,
+                        intervalMinutes: interval
                     ))
                 }
             }
